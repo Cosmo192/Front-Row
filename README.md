@@ -31,7 +31,7 @@ npm run setup:key
 
 Import `.keys/private-jwk.json` into the Supabase project's JWT signing-key configuration and activate it. Put the same compact JSON object in `SUPABASE_JWT_PRIVATE_KEY` in `.env.local`. Keep `.keys/` and `.env.local` private. The legacy `SUPABASE_JWT_SECRET` can be used instead, but do not configure both signing methods.
 
-Apply both files in `supabase/migrations/` in timestamp order to a dedicated Supabase project. The second migration supports owner-only title updates for integrations. New sessions are saved with a default title using the speaker’s local date (for example, `Session — Oct 10, 2026`); the simplified UI keeps that name and returns home when the session ends. API-only callers without a title receive a UTC date fallback. Enable `pg_cron`, then schedule `select public.front_row_cleanup();` every 15 minutes. The migration deliberately does not alter tables in the hosted `realtime` schema; its policies are the only Realtime changes.
+Apply both files in `supabase/migrations/` in timestamp order to a dedicated Supabase project. The second migration supports owner-only title updates after recording. New sessions are saved with a default title using the speaker’s local date (for example, `Session — Oct 10, 2026`); the organizer can edit that name after recording stops, then save and return home. API-only callers without a title receive a UTC date fallback. Enable `pg_cron`, then schedule `select public.front_row_cleanup();` every 15 minutes. The migration deliberately does not alter tables in the hosted `realtime` schema; its policies are the only Realtime changes.
 
 Run the app:
 
@@ -64,7 +64,7 @@ The automated tests cover room expiry, authorization, cross-room isolation, rate
 3. Scan from two or three other phones. Speak near the speaker phone and confirm captions arrive on each audience screen.
 4. On an audience phone, adjust the caption size and enable screen-reader announcements if needed.
 5. On one audience phone, choose **Leave session**. Confirm it returns home and the organizer’s session continues.
-6. Choose **End session** in the organizer’s top-right controls, then confirm. Both the organizer and connected audience should return home automatically. The saved session keeps its default dated name and the room code should no longer join.
+6. Choose **End session** in the organizer’s top-right controls, then confirm. Connected audience members should return home automatically. The organizer should see a title prompt with the date-based name prefilled; save a title and confirm it returns home. The room code should no longer join.
 
 ## Positioning and limitations
 
@@ -78,6 +78,8 @@ The speaker's browser sends microphone audio to ElevenLabs for transcription. Re
 
 ## Local screen preview
 
-With `npm run dev` running, open `/preview` to see the speaking and reading flows. The screen selector includes home, setup, the organizer’s QR screen, full-screen QR sharing, end confirmation, joining, and audience captions. Ending the session returns home directly. These previews reuse the actual UI with explicitly marked sample captions, do not request a microphone, and do not contact providers or save data. Preview routes are enabled only by Vite’s development flag and are unavailable in the production build.
+With `npm run dev` running, open `/preview` to see the speaking and reading flows. The screen selector includes home, setup, the organizer’s QR screen, full-screen QR sharing, end confirmation, the title prompt, joining, and audience captions. Organizers save the title before returning home. These previews reuse the actual UI with explicitly marked sample captions, do not request a microphone, and do not contact providers or save data. Preview routes are enabled only by Vite’s development flag and are unavailable in the production build.
 
 Normal pages fit within the viewport, with long transcripts scrolling within their caption panel. Short screens and enlarged text retain scrolling so controls remain accessible.
+
+Organizers name the session after recording stops. The date-based name is prefilled; Save and finish saves it and returns home. Audience members return home when the session ends. Preview the title screen at `/preview/title`.

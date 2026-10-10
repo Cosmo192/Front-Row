@@ -3,7 +3,7 @@ import { defaultSessionTitle } from '../../shared/session-title';
 import QRCode from 'qrcode';
 import { LANGUAGES, ROOM_CODE_PATTERN, type AppConfig, type Caption, type RoomSession, type RoomStatus } from '../../shared/protocol';
 import { prepareAudio, type PreparedAudio } from './audio';
-import { getConfig, createRoom, joinRoom, getSnapshot, getSummary, getTranscriptionToken, setRoomState, heartbeat, endRoom, subscribeRoom, CaptionPublisher, type RoomSubscription } from './connection';
+import { getConfig, createRoom, joinRoom, getSnapshot, getSummary, getTranscriptionToken, setRoomState, heartbeat, endRoom, setSessionTitle, subscribeRoom, CaptionPublisher, type RoomSubscription } from './connection';
 import { mergeCaption, mergeCaptions } from './captions';
 import { icon, escapeHtml as esc } from './ui/icons';
 
@@ -30,7 +30,7 @@ let wakeLock: WakeLockSentinel | undefined;
 let qrUrl = '';
 let lastAnnouncedSegment = '';
 let previewMode = false;
-const previewScreens = [['', 'Flow overview'], ['home', 'Home'], ['speaker', 'Start session'], ['live', 'Speaking'], ['share', 'Share QR'], ['end', 'End confirmation'], ['join', 'Join session'], ['audience', 'Reading captions']] as const;
+const previewScreens = [['', 'Flow overview'], ['home', 'Home'], ['speaker', 'Start session'], ['live', 'Speaking'], ['share', 'Share QR'], ['end', 'End confirmation'], ['title', 'Name session'], ['join', 'Join session'], ['audience', 'Reading captions']] as const;
 const route = (path: string) => previewMode ? `/preview${path === '/' ? '/home' : path}` : path;
 
 const $ = <T extends HTMLElement = HTMLElement>(selector: string) => document.querySelector<T>(selector);
@@ -245,10 +245,34 @@ function onRoomEnded() {
   void wakeLock?.release().catch(() => {});
   publisher?.close();
   void subscription?.close().catch(() => {});
-  void navigate(route('/'));
   announceCaptions = false;
-  announce('The session has ended. You’re back at home.');
-  renderCaptions();
+  if (session?.role === 'speaker') { postSessionTitle(); announce('Recording stopped. Name your session.'); }
+  else { void navigate(route('/')); announce('The session has ended. You’re back at home.'); }
+}
+function postSessionTitle() {
+  if (!session) return;
+  document.title = 'Name your session — Front Row';
+  app.innerHTML = shell(`<section class="setup-layout"><h1>What’s the session title?</h1><p class="lead">Recording has stopped.</p><form id="title-form" class="setup-form"><div class="field"><label for="session-title">Session title</label><input id="session-title" name="title" type="text" value="${esc(session.room.title)}" maxlength="120" required></div>${notice('title-error')}<button id="save-title" class="button block" type="submit">Save and finish${icon('arrow')}</button></form></section>`);
+  $('#title-form')!.addEventListener('submit', event => { event.preventDefault(); void saveSessionTitle(); });
+  $('#session-title')?.focus();
+}
+async function saveSessionTitle() {
+  const currentSession = session;
+  const title = $<HTMLInputElement>('#session-title')?.value.trim();
+  if (!currentSession || !title) return;
+  const button = $<HTMLButtonElement>('#save-title')!;
+  button.disabled = true; button.textContent = 'Saving…';
+  try {
+    if (previewMode) currentSession.room.title = title;
+    else { const result = await setSessionTitle(currentSession, title); currentSession.room = result.room; }
+    if (session !== currentSession) return;
+    await navigate(route('/'));
+    announce('Session saved. You’re back at home.');
+  } catch (error) {
+    if (session !== currentSession) return;
+    showNotice('title-error', 'Couldn’t save the title', message(error));
+    button.disabled = false; button.textContent = 'Save and finish';
+  }
 }
 async function copyJoinLink() {
   if (!session) return;
@@ -345,12 +369,13 @@ function previewPage(path: string) {
   if (path === '/home') { homePage(); return; }
   if (!path || path === '/') {
     document.title = 'Session flow preview — Front Row';
-    app.innerHTML = shell(`<section class="preview-overview"><h1>See the whole flow</h1><p class="lead">Interactive screens with sample captions. No microphone or live services are used.</p><div class="flow-columns"><section><h2>Speaking</h2><ol>${[['speaker', 'Choose your language'], ['live', 'Share and speak'], ['end', 'End and return home']].map(([path, label]) => `<li><a href="/preview/${path}">${label}${icon('arrow')}</a></li>`).join('')}</ol></section><section><h2>Reading</h2><ol>${[['join', 'Enter the room code'], ['audience', 'Read the live captions'], ['home', 'Return home']].map(([path, label]) => `<li><a href="/preview/${path}">${label}${icon('arrow')}</a></li>`).join('')}</ol><a class="button secondary block" href="/preview/home">See home screen</a></section></div></section>`);
+    app.innerHTML = shell(`<section class="preview-overview"><h1>See the whole flow</h1><p class="lead">Interactive screens with sample captions. No microphone or live services are used.</p><div class="flow-columns"><section><h2>Speaking</h2><ol>${[['speaker', 'Choose your language'], ['live', 'Share and speak'], ['end', 'Stop recording'], ['title', 'Name and finish']].map(([path, label]) => `<li><a href="/preview/${path}">${label}${icon('arrow')}</a></li>`).join('')}</ol></section><section><h2>Reading</h2><ol>${[['join', 'Enter the room code'], ['audience', 'Read the live captions'], ['home', 'Return home']].map(([path, label]) => `<li><a href="/preview/${path}">${label}${icon('arrow')}</a></li>`).join('')}</ol><a class="button secondary block" href="/preview/home">See home screen</a></section></div></section>`);
     return;
   }
-  if (['/title', '/done', '/audience-done'].includes(path)) { history.replaceState({}, '', '/preview/home'); homePage(); return; }
+  if (['/done', '/audience-done'].includes(path)) { history.replaceState({}, '', '/preview/home'); homePage(); return; }
   seedPreview(path.startsWith('/audience') ? 'audience' : 'speaker');
-  if (path === '/audience') renderAudience();
+  if (path === '/title') { seedPreview('speaker', true); postSessionTitle(); }
+  else if (path === '/audience') renderAudience();
   else {
     speakerLive();
     $('#audience-count')!.textContent = '3';
