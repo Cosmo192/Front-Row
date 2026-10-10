@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto';
 import type { ApiError, Role, Room, RoomSession } from '../shared/protocol.ts';
 import { appConfig, bearerToken, isSpeakerSecret, issueGuestToken, newRoomCode, rateKey, secretHash, speakerSecret, verifyGuestToken, type Environment } from './auth.ts';
 import { createDatabase, type Database, type DatabaseArguments, type DatabaseResult } from './db.ts';
-import { ApiFault, captionInput, createRoomInput, databaseFault, readJson, roomCode, roomEvent, stateInput } from './validation.ts';
+import { ApiFault, captionInput, createRoomInput, databaseFault, readJson, roomCode, roomEvent, stateInput, titleInput } from './validation.ts';
 import { summarizeRecent } from './gemini.ts';
 
 interface Dependencies { env?: Environment; database?: Database; fetcher?: typeof fetch }
@@ -54,7 +54,7 @@ export function createRequestHandler(dependencies: Dependencies = {}) {
         throw new ApiFault('SERVICE_UNAVAILABLE', 'We could not create a room. Please try again.', 503, true);
       }
 
-      const match = url.pathname.match(/^\/api\/rooms\/([^/]+)\/(join|snapshot|refresh|transcription-token|captions|heartbeat|state|end|summary)$/);
+      const match = url.pathname.match(/^\/api\/rooms\/([^/]+)\/(join|snapshot|refresh|transcription-token|captions|heartbeat|state|end|summary|title)$/);
       if (!match) throw new ApiFault('NOT_FOUND', 'This page could not be found.', 404);
       const code = roomCode(decodeURIComponent(match[1]));
       const action = match[2];
@@ -78,6 +78,11 @@ export function createRequestHandler(dependencies: Dependencies = {}) {
         subject = claims.subject;
       }
       if (!speaker && !['snapshot', 'refresh', 'summary'].includes(action)) throw new ApiFault('FORBIDDEN', 'Only the speaker can change this session.', 403);
+
+      if (action === 'title') {
+        const result = await db.manage('title', { ...auth, payload: titleInput(await readJson(request)) });
+        return json({ room: requireRoom(result) });
+      }
 
       if (action === 'summary') {
         const result = await db.manage('snapshot', auth);

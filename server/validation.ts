@@ -27,6 +27,14 @@ export function createRoomInput(value: unknown): CreateRoomInput {
   return { title, language: input.language as string };
 }
 
+export function titleInput(value: unknown): { title: string } {
+  const input = object(value);
+  if (typeof input.title !== 'string') throw new ApiFault('INVALID_TITLE', 'Enter a session title.');
+  const title = input.title.trim();
+  if (title.length > 120 || /[\u0000-\u001f\u007f]/.test(title)) throw new ApiFault('INVALID_TITLE', 'Keep the session title to 120 characters on one line.');
+  return { title };
+}
+
 export function captionInput(value: unknown): Caption {
   const input = object(value);
   if (input.v !== 1 || input.type !== 'caption' || typeof input.roomId !== 'string'

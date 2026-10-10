@@ -27,6 +27,7 @@ describe('Postgres room invariants (the deployable migration)', { concurrency: f
       grant select, insert on realtime.messages to authenticated;
     `);
     await pg.exec(await readFile(new URL('../supabase/migrations/20261010221106_front_row.sql', import.meta.url), 'utf8'));
+    await pg.exec(await readFile(new URL('../supabase/migrations/20261011000100_session_title.sql', import.meta.url), 'utf8'));
   });
   after(async () => { await pg?.close(); });
   beforeEach(async () => {
@@ -58,6 +59,32 @@ describe('Postgres room invariants (the deployable migration)', { concurrency: f
     await assert.rejects(rpc('end'), /permission denied/);
     await pg.exec('set role service_role');
     assert.equal((await rpc('snapshot')).room?.status, 'starting');
+  });
+
+  it('only the owner can title an ended session before retention expires', async () => {
+    await create();
+    const title = async (secret = hash, value = 'Neighborhood meeting') => {
+      const result = await pg.query<{ result: DatabaseResult }>('select public.front_row_title($1,$2,$3) as result', [code, secret, value]);
+      return result.rows[0].result;
+    };
+    assert.equal((await title()).error, 'INVALID_REQUEST');
+    await rpc('end');
+    assert.equal((await title(otherHash)).error, 'UNAUTHORIZED');
+    assert.equal((await title(hash, 'x'.repeat(121))).error, 'INVALID_REQUEST');
+    assert.equal((await title(hash, 'two\nlines')).error, 'INVALID_REQUEST');
+    const result = await title(hash, '  Neighborhood meeting  ');
+    assert.equal(result.room?.title, 'Neighborhood meeting');
+    assert.equal(result.room?.status, 'ended');
+    assert.equal((await title()).room?.version, result.room?.version);
+    assert.equal((await rpc('join', { code, guestId: randomUUID(), rateKey: 'wifi' })).error, 'ROOM_UNAVAILABLE');
+    await pg.exec('set role authenticated');
+    await assert.rejects(title(), /permission denied/);
+    await pg.exec('set role anon');
+    await assert.rejects(title(), /permission denied/);
+    await pg.exec('reset role');
+    await pg.exec("update public.front_row_rooms set purge_at = now() - interval '1 second'");
+    await pg.exec('set role service_role');
+    assert.equal((await title()).error, 'ROOM_UNAVAILABLE');
   });
 
   it('private Realtime grants allow only this room and presence writes', async () => {

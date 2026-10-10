@@ -28,7 +28,9 @@ export function createDatabase(env: Environment, fetcher: typeof fetch = fetch):
   });
   return {
     async manage(action, args) {
-      const { data, error } = await client.rpc('front_row_manage', {
+      const { data, error } = await client.rpc(action === 'title' ? 'front_row_title' : 'front_row_manage', action === 'title' ? {
+        p_code: args.code, p_secret_hash: args.secretHash ?? null, p_title: (args.payload as { title: string }).title,
+      } : {
         p_action: action, p_code: args.code, p_secret_hash: args.secretHash ?? null,
         p_guest_id: args.guestId ?? null, p_claim_room: args.claimRoom ?? null,
         p_payload: args.payload ?? {}, p_rate_key: args.rateKey ?? null,

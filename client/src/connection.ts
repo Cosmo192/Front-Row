@@ -41,6 +41,7 @@ export const getTranscriptionToken = (session: RoomSession) => request<{ token: 
 export const heartbeat = (session: RoomSession) => request<{ room: Room }>(roomPath(session, 'heartbeat'), 'POST', {}, session.accessToken);
 export const setRoomState = (session: RoomSession, status: 'listening' | 'reconnecting') => request<{ room: Room }>(roomPath(session, 'state'), 'POST', { status }, session.accessToken);
 export const endRoom = (session: RoomSession) => request<{ room: Room }>(roomPath(session, 'end'), 'POST', {}, session.accessToken);
+export const setSessionTitle = (session: RoomSession, title: string) => request<{ room: Room }>(roomPath(session, 'title'), 'POST', { title }, session.accessToken);
 const postCaption = (session: RoomSession, caption: Caption) => request<{ ok: boolean }>(roomPath(session, 'captions'), 'POST', caption, session.accessToken);
 
 /** A slow network never queues audio. Coalesce text drafts; retry immutable finals. */
