@@ -281,3 +281,20 @@ dialog p { margin-top: 14px; font-size: 14px; color: #526159; }
   .speaker-grid { flex: 0 0 auto; }
   .speaker-transcript, .audience-transcript { min-height: 120px; max-height: 220px; }
 }
+
+/* The organizer shares access; the audience reads the transcript. */
+.session-actions { display: flex; align-items: center; gap: 12px; flex-shrink: 0; }
+.organizer-qr { flex: 1; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; }
+.organizer-qr h2 { font-size: 20px; }
+.organizer-qr .qr-image { width: min(320px, 42dvh, 75vw); height: auto; margin: 20px auto 8px; }
+.organizer-qr .audience-count { border: 0; margin: 8px 0; padding: 0; }
+.join-alternatives { margin-top: 12px; min-width: 200px; }
+.join-alternatives .room-code { font-size: 23px; margin: 4px 0; }
+@media (max-width: 700px) {
+  .speaker-page .live-top { align-items: flex-start; }
+  .speaker-page .live-top h1 { font-size: 22px; }
+  .speaker-page .live-top p { max-width: 200px; font-size: 11px; }
+  .session-actions { flex-direction: column-reverse; align-items: flex-end; gap: 6px; }
+  .session-actions .button { padding: 12px; font-size: 12px; }
+  .session-actions .status-badge { font-size: 11px; padding: 4px 8px; min-height: 28px; }
+}

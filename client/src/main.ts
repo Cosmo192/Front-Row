@@ -3,7 +3,7 @@ import { defaultSessionTitle } from '../../shared/session-title';
 import QRCode from 'qrcode';
 import { LANGUAGES, ROOM_CODE_PATTERN, type AppConfig, type Caption, type RoomSession, type RoomStatus } from '../../shared/protocol';
 import { prepareAudio, type PreparedAudio } from './audio';
-import { getConfig, createRoom, joinRoom, getSnapshot, getSummary, getTranscriptionToken, setRoomState, heartbeat, endRoom, setSessionTitle, subscribeRoom, CaptionPublisher, type RoomSubscription } from './connection';
+import { getConfig, createRoom, joinRoom, getSnapshot, getSummary, getTranscriptionToken, setRoomState, heartbeat, endRoom, subscribeRoom, CaptionPublisher, type RoomSubscription } from './connection';
 import { mergeCaption, mergeCaptions } from './captions';
 import { icon, escapeHtml as esc } from './ui/icons';
 
@@ -30,7 +30,7 @@ let wakeLock: WakeLockSentinel | undefined;
 let qrUrl = '';
 let lastAnnouncedSegment = '';
 let previewMode = false;
-const previewScreens = [['', 'Flow overview'], ['home', 'Home'], ['speaker', 'Start session'], ['live', 'Speaking'], ['share', 'Share QR'], ['end', 'End confirmation'], ['title', 'Session title'], ['done', 'Speaker finish'], ['join', 'Join session'], ['audience', 'Reading captions'], ['audience-done', 'Audience finish']] as const;
+const previewScreens = [['', 'Flow overview'], ['home', 'Home'], ['speaker', 'Start session'], ['live', 'Speaking'], ['share', 'Share QR'], ['end', 'End confirmation'], ['join', 'Join session'], ['audience', 'Reading captions']] as const;
 const route = (path: string) => previewMode ? `/preview${path === '/' ? '/home' : path}` : path;
 
 const $ = <T extends HTMLElement = HTMLElement>(selector: string) => document.querySelector<T>(selector);
@@ -128,7 +128,7 @@ function speakerLive() {
   document.title = 'Speaking live — Front Row';
   const room = session.room;
   const languageName = LANGUAGES.find(([code]) => code === room.language)?.[1] ?? room.language;
-  app.innerHTML = shell(`<div class="live-top"><div><h1>${esc(room.title || 'Live captions')}</h1><p>${esc(languageName)} captions</p></div>${statusMarkup()}</div>${notice('live-error')}${notice('live-warning')}<div class="speaker-grid"><section class="panel speaker-caption-panel" aria-labelledby="preview-title"><div class="mic-strip">${icon('mic')}<span class="mic-text">Microphone level</span><div id="mic-meter" class="mic-meter" role="meter" aria-label="Microphone level" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><div id="mic-fill" class="mic-fill"></div></div></div><div class="panel-header"><h2 id="preview-title" class="panel-title">Caption preview</h2></div><div id="transcript" class="transcript speaker-transcript" aria-live="off" tabindex="0" aria-label="Caption preview">${emptyCaptions(true)}</div></section><aside class="panel share-panel" aria-labelledby="share-title"><h2 id="share-title">Invite your audience</h2><p>Ask them to scan this QR code.</p><img id="room-qr" class="qr-image" alt="QR code to join this caption session" hidden><div class="code-wrap"><span class="code-label">Or enter room code</span><strong class="room-code">${esc(room.code)}</strong></div><div class="share-actions"><button id="expand-qr" class="button secondary" type="button">${icon('expand')}Enlarge QR code</button><button id="copy-link" class="button quiet" type="button">${icon('copy')}Copy join link</button></div><div class="audience-count">${icon('users')}<strong id="audience-count">0</strong><span>in the audience</span></div></aside></div><div class="speaker-bottom"><p id="wake-status" class="wake-status">${icon('sun')}<span>Keep this page visible and your phone unlocked.</span></p></div><button id="end-button" class="button danger speaker-end" type="button">End session</button><dialog id="end-dialog" aria-labelledby="end-dialog-title" aria-describedby="end-dialog-description"><h2 id="end-dialog-title">End this session?</h2><p id="end-dialog-description">Captions will stop for everyone, and the room code will no longer work.</p><div class="dialog-actions"><button id="cancel-end" class="button secondary" type="button" autofocus>Keep speaking</button><button id="confirm-end" class="button danger solid" type="button">End session</button></div></dialog><dialog id="qr-dialog" class="qr-full" aria-labelledby="qr-dialog-title"><button id="close-qr" class="close-button" type="button" aria-label="Close full-screen QR">${icon('close')}</button><div class="qr-full-inner">${wordmark()}<h2 id="qr-dialog-title">Scan to read captions</h2><p>Open your camera and scan to join the captions.</p><img id="fullscreen-qr" class="qr-image" alt="QR code to join this caption session"><span class="code-label">Or enter room code</span><strong class="room-code">${esc(room.code)}</strong><p id="qr-address" class="qr-url"></p></div></dialog>`, 'page speaker-page');
+  app.innerHTML = shell(`<div class="live-top"><div><h1>Session live</h1><p>${esc(room.title)} · ${esc(languageName)}</p></div><div class="session-actions">${statusMarkup()}<button id="end-button" class="button danger" type="button">End session</button></div></div>${notice('live-error')}${notice('live-warning')}<section class="organizer-qr" aria-labelledby="share-title"><h2 id="share-title">Scan to read captions</h2><img id="room-qr" class="qr-image" alt="QR code to join this caption session" hidden><button id="expand-qr" class="button quiet" type="button">${icon('expand')}Show full-screen QR</button><div class="audience-count">${icon('users')}<strong id="audience-count">${audienceCount}</strong><span>connected</span></div><details class="join-alternatives"><summary>Other ways to join</summary><div class="code-wrap"><span class="code-label">Room code</span><strong class="room-code">${esc(room.code)}</strong></div><button id="copy-link" class="button quiet" type="button">${icon('copy')}Copy join link</button></details></section><dialog id="end-dialog" aria-labelledby="end-dialog-title" aria-describedby="end-dialog-description"><h2 id="end-dialog-title">End this session?</h2><p id="end-dialog-description">Captions will stop for everyone, and the room code will no longer work.</p><div class="dialog-actions"><button id="cancel-end" class="button secondary" type="button" autofocus>Keep speaking</button><button id="confirm-end" class="button danger solid" type="button">End session</button></div></dialog><dialog id="qr-dialog" class="qr-full" aria-labelledby="qr-dialog-title"><button id="close-qr" class="close-button" type="button" aria-label="Close full-screen QR">${icon('close')}</button><div class="qr-full-inner">${wordmark()}<h2 id="qr-dialog-title">Scan to read captions</h2><p>Open your camera and scan to join the captions.</p><img id="fullscreen-qr" class="qr-image" alt="QR code to join this caption session"><span class="code-label">Or enter room code</span><strong class="room-code">${esc(room.code)}</strong><p id="qr-address" class="qr-url"></p></div></dialog>`, 'page speaker-page');
   $('#end-button')!.addEventListener('click', () => openEndDialog());
   $('#cancel-end')!.addEventListener('click', () => { $<HTMLDialogElement>('#end-dialog')!.close(); });
   $('#confirm-end')!.addEventListener('click', () => void finishSession());
@@ -205,14 +205,8 @@ function startHeartbeat() {
   heartbeatTimer = setInterval(() => { if (session && !ended && session.role === 'speaker') void heartbeat(session).then(result => { if (session) session.room = result.room; }).catch(error => showNotice('live-warning', 'The room connection was interrupted', message(error), 'warning')); }, 15_000);
 }
 async function acquireWakeLock() {
-  if (!session || session.role !== 'speaker' || ended || document.visibilityState !== 'visible') return;
-  const element = $('#wake-status');
-  if (!('wakeLock' in navigator)) { if (element) element.innerHTML = `${icon('sun')}<span>Keep your phone unlocked. This browser can’t keep the screen awake for you.</span>`; return; }
-  try {
-    wakeLock = await navigator.wakeLock.request('screen');
-    if (element) element.innerHTML = `${icon('sun')}<span>Screen kept awake. Keep this page open while you speak.</span>`;
-    wakeLock.addEventListener('release', () => { const status = $('#wake-status'); if (status) status.innerHTML = `${icon('sun')}<span>Keep your phone unlocked and this page visible.</span>`; });
-  } catch { if (element) element.innerHTML = `${icon('sun')}<span>Keep your phone unlocked. Screen wake lock isn’t available right now.</span>`; }
+  if (!session || session.role !== 'speaker' || ended || document.visibilityState !== 'visible' || !('wakeLock' in navigator)) return;
+  try { wakeLock = await navigator.wakeLock.request('screen'); } catch { /* microphone errors surface separately */ }
 }
 function onAudioError(error: Error) {
   if (!session || ended) return;
@@ -235,9 +229,8 @@ async function finishSession() {
     await audio?.stop();
     await publisher?.flush();
     const result = await endRoom(currentSession);
-    session.room = result.room;
-    $<HTMLDialogElement>('#end-dialog')?.close();
-    onRoomEnded();
+    currentSession.room = result.room;
+    if (session === currentSession) { $<HTMLDialogElement>('#end-dialog')?.close(); onRoomEnded(); }
   } catch (error) {
     $<HTMLDialogElement>('#end-dialog')?.close();
     showNotice('live-error', 'Your microphone is stopped', `We couldn’t confirm that the room closed. ${message(error)} Try ending the session again.`);
@@ -252,69 +245,11 @@ function onRoomEnded() {
   void wakeLock?.release().catch(() => {});
   publisher?.close();
   void subscription?.close().catch(() => {});
-  if (session?.role === 'speaker') postSessionTitle(); else showCompletion(true);
+  void navigate(route('/'));
   announceCaptions = false;
-  announce('The session has ended.');
+  announce('The session has ended. You’re back at home.');
   renderCaptions();
 }
-function postSessionTitle() {
-  if (previewMode) history.replaceState({}, '', '/preview/title');
-  document.title = 'Name your session — Front Row';
-  app.innerHTML = shell(`<section class="setup-layout"><div class="completion-mark">${icon('check')}</div><h1>What was this session called?</h1><p class="lead">Your session has ended. Add a title to identify these captions.</p><form id="title-form" class="setup-form"><div class="field"><label for="session-title">Session title <span class="optional-label">Optional</span></label><input id="session-title" type="text" maxlength="120" placeholder="e.g. Community meeting" value="${esc(session?.room.title || defaultSessionTitle(new Date(session!.room.createdAt)))}" autocomplete="off"></div>${notice('title-error')}<button id="finish-title" class="button block" type="submit">Finish</button><button id="skip-title" class="button quiet block" type="button">Skip for now</button></form></section>`);
-  $('#title-form')!.addEventListener('submit', event => { event.preventDefault(); void saveTitle(); });
-  $('#skip-title')!.addEventListener('click', () => void saveTitle(true));
-  $('#main')?.focus({ preventScroll: true });
-}
-async function saveTitle(useDefault = false) {
-  if (!session) return;
-  const currentSession = session;
-  const version = viewVersion;
-  const fallback = currentSession.room.title || defaultSessionTitle(new Date(currentSession.room.createdAt));
-  const title = useDefault ? fallback : $<HTMLInputElement>('#session-title')!.value.trim() || fallback;
-  const button = $<HTMLButtonElement>('#finish-title')!;
-  button.disabled = true;
-  $<HTMLButtonElement>('#skip-title')!.disabled = true;
-  button.textContent = 'Finishing…';
-  try {
-    if (title !== currentSession.room.title) currentSession.room = previewMode ? { ...currentSession.room, title } : (await setSessionTitle(currentSession, title)).room;
-    if (version !== viewVersion || session !== currentSession) return;
-    showCompletion(true);
-    renderCaptions();
-  } catch (error) { if (version === viewVersion) showNotice('title-error', 'The title couldn’t be saved', message(error)); }
-  finally { button.disabled = false; button.textContent = 'Finish'; const skip = $<HTMLButtonElement>('#skip-title'); if (skip) skip.disabled = false; }
-}
-
-function showCompletion(roomClosed: boolean) {
-  if (previewMode) {
-    const path = roomClosed ? '/preview/done' : '/preview/audience-done';
-    history.replaceState({}, '', path);
-    const selector = $<HTMLSelectElement>('#preview-screen');
-    if (selector) selector.value = path;
-  }
-  const transcript = $('#transcript');
-  if (!$('#main')) app.innerHTML = shell('');
-  const main = $('#main')!;
-  document.title = 'Session complete — Front Row';
-  main.className = 'page completion-page';
-  main.innerHTML = `<section class="completion"><div class="completion-mark">${icon('check')}</div><h1>${roomClosed ? 'Session complete' : 'You’re all done'}</h1><p class="lead">${roomClosed ? 'Live captions have stopped. This room is now closed.' : 'You’ve left the captions. The speaker’s session can continue.'}</p><a class="button block" href="${route('/')}">Back to home</a></section>`;
-  if (captions.some(caption => caption.text.trim())) {
-    const review = document.createElement('details');
-    review.className = 'transcript-review';
-    const summary = document.createElement('summary');
-    summary.textContent = session?.room.title || 'Review captions from this session';
-    const reviewTranscript = transcript ?? document.createElement('div');
-    reviewTranscript.id = 'transcript';
-    reviewTranscript.className = 'transcript';
-    reviewTranscript.setAttribute('aria-label', 'Session captions');
-    reviewTranscript.tabIndex = 0;
-    review.append(summary, reviewTranscript);
-    main.append(review);
-  }
-  renderCaptions();
-  main.focus({ preventScroll: true });
-  window.scrollTo(0, 0);
-}
-
 async function copyJoinLink() {
   if (!session) return;
   const button = $<HTMLButtonElement>('#copy-link');
@@ -362,12 +297,12 @@ async function audiencePage(code: string) {
 function renderAudience() {
   if (!session) return;
   document.title = 'Live captions — Front Row';
-  app.innerHTML = shell(`<div class="live-top"><div><h1>${esc(session.room.title || 'Live captions')}</h1><p>Room ${esc(session.room.code)}</p></div>${statusMarkup()}</div>${notice('live-error')}${notice('live-warning')}<div class="audience-toolbar"><div class="size-control"><span id="size-label">Text size</span><div class="size-buttons" role="group" aria-labelledby="size-label"><button id="text-smaller" type="button" aria-label="Smaller caption text">A−</button><button id="text-larger" type="button" aria-label="Larger caption text">A+</button></div><span id="size-value" class="sr-only" role="status">${sizes[sizeIndex]} pixels</span></div><details class="reading-options"><summary>Reading options</summary><label class="announce-label"><input id="announce-captions" type="checkbox" ${announceCaptions ? 'checked' : ''}>Read new captions aloud with my screen reader</label></details><button id="catch-up" class="button quiet" type="button">Catch me up</button></div><dialog id="summary" class="summary-card" aria-label="Catch-up summary"></dialog><div id="transcript" class="transcript audience-transcript" tabindex="0" aria-live="off" aria-label="Live captions">${emptyCaptions(false)}</div><p class="audience-session-note">${icon('captions')}Draft captions are italic until the words are confirmed.</p><button id="leave-session" class="button secondary" type="button">Finish reading</button>`, 'page audience-page');
+  app.innerHTML = shell(`<div class="live-top"><div><h1>${esc(session.room.title || 'Live captions')}</h1><p>Room ${esc(session.room.code)}</p></div>${statusMarkup()}</div>${notice('live-error')}${notice('live-warning')}<div class="audience-toolbar"><div class="size-control"><span id="size-label">Text size</span><div class="size-buttons" role="group" aria-labelledby="size-label"><button id="text-smaller" type="button" aria-label="Smaller caption text">A−</button><button id="text-larger" type="button" aria-label="Larger caption text">A+</button></div><span id="size-value" class="sr-only" role="status">${sizes[sizeIndex]} pixels</span></div><details class="reading-options"><summary>Reading options</summary><label class="announce-label"><input id="announce-captions" type="checkbox" ${announceCaptions ? 'checked' : ''}>Read new captions aloud with my screen reader</label></details><button id="catch-up" class="button quiet" type="button">Catch me up</button></div><dialog id="summary" class="summary-card" aria-label="Catch-up summary"></dialog><div id="transcript" class="transcript audience-transcript" tabindex="0" aria-live="off" aria-label="Live captions">${emptyCaptions(false)}</div><p class="audience-session-note">${icon('captions')}Draft captions are italic until the words are confirmed.</p><button id="leave-session" class="button secondary" type="button">Leave session</button>`, 'page audience-page');
   $('#text-smaller')!.addEventListener('click', () => changeTextSize(-1));
   $('#text-larger')!.addEventListener('click', () => changeTextSize(1));
   $('#announce-captions')!.addEventListener('change', event => { announceCaptions = (event.target as HTMLInputElement).checked; announce(announceCaptions ? 'Finalized caption announcements are on.' : 'Caption announcements are off.'); });
   $('#catch-up')!.addEventListener('click', () => void requestCatchUp());
-  $('#leave-session')!.addEventListener('click', () => { void subscription?.close().catch(() => {}); announceCaptions = false; showCompletion(false); announce('You’ve finished reading captions.'); });
+  $('#leave-session')!.addEventListener('click', () => { announceCaptions = false; void navigate(route('/')); announce('You’ve left the session.'); });
   changeTextSize(0);
   renderCaptions();
   updateStatus(roomStatus);
@@ -410,13 +345,12 @@ function previewPage(path: string) {
   if (path === '/home') { homePage(); return; }
   if (!path || path === '/') {
     document.title = 'Session flow preview — Front Row';
-    app.innerHTML = shell(`<section class="preview-overview"><h1>See the whole flow</h1><p class="lead">Interactive screens with sample captions. No microphone or live services are used.</p><div class="flow-columns"><section><h2>Speaking</h2><ol>${[['speaker', 'Choose your language'], ['live', 'Share and speak'], ['end', 'End the session'], ['title', 'Add an optional title'], ['done', 'Review and finish']].map(([path, label]) => `<li><a href="/preview/${path}">${label}${icon('arrow')}</a></li>`).join('')}</ol></section><section><h2>Reading</h2><ol>${[['join', 'Enter the room code'], ['audience', 'Read the live captions'], ['audience-done', 'Review and finish']].map(([path, label]) => `<li><a href="/preview/${path}">${label}${icon('arrow')}</a></li>`).join('')}</ol><a class="button secondary block" href="/preview/home">See home screen</a></section></div></section>`);
+    app.innerHTML = shell(`<section class="preview-overview"><h1>See the whole flow</h1><p class="lead">Interactive screens with sample captions. No microphone or live services are used.</p><div class="flow-columns"><section><h2>Speaking</h2><ol>${[['speaker', 'Choose your language'], ['live', 'Share and speak'], ['end', 'End and return home']].map(([path, label]) => `<li><a href="/preview/${path}">${label}${icon('arrow')}</a></li>`).join('')}</ol></section><section><h2>Reading</h2><ol>${[['join', 'Enter the room code'], ['audience', 'Read the live captions'], ['home', 'Return home']].map(([path, label]) => `<li><a href="/preview/${path}">${label}${icon('arrow')}</a></li>`).join('')}</ol><a class="button secondary block" href="/preview/home">See home screen</a></section></div></section>`);
     return;
   }
-  seedPreview(path.startsWith('/audience') ? 'audience' : 'speaker', ['/title', '/done', '/audience-done'].includes(path));
+  if (['/title', '/done', '/audience-done'].includes(path)) { history.replaceState({}, '', '/preview/home'); homePage(); return; }
+  seedPreview(path.startsWith('/audience') ? 'audience' : 'speaker');
   if (path === '/audience') renderAudience();
-  else if (path === '/title') postSessionTitle();
-  else if (path === '/done' || path === '/audience-done') { showCompletion(path === '/done'); }
   else {
     speakerLive();
     $('#audience-count')!.textContent = '3';
@@ -463,7 +397,6 @@ window.addEventListener('popstate', () => { if (session?.role === 'speaker' && !
 window.addEventListener('beforeunload', event => { if (session?.role === 'speaker' && !ended && !previewMode) { event.preventDefault(); } });
 document.addEventListener('visibilitychange', () => {
   if (!session || session.role !== 'speaker' || ended || previewMode) return;
-  if (document.visibilityState === 'hidden') showNotice('live-warning', 'Keep this page open while speaking', 'Your phone may pause the microphone when this page is hidden or the screen locks.', 'warning');
-  else void acquireWakeLock();
+  if (document.visibilityState === 'visible') void acquireWakeLock();
 });
 void navigate(location.pathname, false);
