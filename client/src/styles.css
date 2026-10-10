@@ -17,6 +17,10 @@ a { color: var(--blue); text-underline-offset: 4px; }
 a:hover { text-decoration-thickness: 2px; }
 button:disabled { cursor: not-allowed; opacity: .55; }
 :focus-visible { outline: 3px solid var(--blue); outline-offset: 5px; }
+/* The route container receives programmatic focus so screen readers land at
+   the start of each screen. It is not an interactive control, so do not draw
+   a large focus ring around the entire page when navigating. */
+main:focus { outline: none; }
 h1,h2,h3,p { margin: 0; }
 h1,h2,h3 { line-height: 1.14; letter-spacing: -.035em; }
 .icon { flex: 0 0 auto; display: inline-block; vertical-align: middle; }
