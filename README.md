@@ -63,7 +63,8 @@ The automated tests cover room expiry, authorization, cross-room isolation, rate
 2. Choose a language, tap **Start session**, allow the microphone, and show the QR code.
 3. Scan from two or three other phones. Speak near the speaker phone and confirm captions arrive on each audience screen.
 4. On an audience phone, adjust the caption size and enable screen-reader announcements if needed.
-5. End the session. Audience phones should show the ended state and the room code should no longer join.
+5. On one audience phone, choose **Finish reading**. Confirm the speaker’s session continues and the viewer can review received captions, then choose **Finish** to return home.
+6. End the session from the speaker’s phone. Speaker and remaining audience phones should show the completion screen, offer a review of received captions, and return home with **Finish**. The room code should no longer join.
 
 ## Positioning and limitations
 

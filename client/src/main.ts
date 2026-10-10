@@ -32,12 +32,12 @@ let lastAnnouncedSegment = '';
 
 const $ = <T extends HTMLElement = HTMLElement>(selector: string) => document.querySelector<T>(selector);
 const wordmark = () => '<a class="wordmark" href="/" aria-label="Front Row home">Front Row<span aria-hidden="true">.</span></a>';
-const header = (home = false) => `<header class="site-header">${wordmark()}${home ? '<span class="header-note">ONE VOICE. EVERYONE INCLUDED.</span>' : '<a class="header-link" href="/privacy">'+icon('shield')+'Your privacy</a>'}</header>`;
-const footer = () => '<footer class="site-footer"><span>A little closer to every word.</span><a href="/privacy">How your data is handled</a></footer>';
-const shell = (content: string, cls = 'page', home = false) => `${header(home)}<main id="main" class="${cls}" tabindex="-1">${content}</main>${footer()}`;
+const header = () => `<header class="site-header">${wordmark()}<a class="header-link" href="/privacy">Privacy</a></header>`;
+const footer = () => '<footer class="site-footer"><span>Live captions. No account needed.</span></footer>';
+const shell = (content: string, cls = 'page') => `${header()}<main id="main" class="${cls}" tabindex="-1">${content}</main>${footer()}`;
 const back = (label = 'Back to home') => `<a class="back-link" href="/">${icon('back')}${label}</a>`;
 const notice = (id: string) => `<div id="${id}" class="notice error" role="alert" hidden></div>`;
-const emptyCaptions = (speaker: boolean) => `<div class="empty-captions">${icon('captions')}<strong>${speaker ? 'Your words will appear here.' : 'You’re in the right place.'}</strong><span>${speaker ? 'Speak naturally, with your phone close by. Everyone in the room sees the same captions.' : 'Captions will appear as the speaker talks. Settle in and follow along.'}</span></div>`;
+const emptyCaptions = (speaker: boolean) => `<div class="empty-captions">${icon('captions')}<strong>${speaker ? 'Ready when you are' : 'Waiting for the speaker'}</strong><span>${speaker ? 'Keep your phone close to your voice and start speaking.' : 'You’re connected. Captions appear here when the speaker starts talking.'}</span></div>`;
 
 function showNotice(id: string, title: string, detail = '', kind = 'error') {
   const element = $(`#${id}`);
@@ -50,20 +50,26 @@ function message(error: unknown): string { return error instanceof Error ? error
 function announce(text: string) { announcer.textContent = text; }
 
 function homePage() {
-  document.title = 'Front Row — Live captions for every seat';
-  app.innerHTML = shell(`<section class="hero"><div class="hero-copy"><div class="eyebrow">A place for every voice</div><h1>Front row for everyone,<em>even from the back.</em></h1><p class="hero-description">Live captions for the whole room.<br>No app, no account.</p><div class="choose-role"><a class="role-card" href="/speaker">${icon('mic')}<span><strong>Speaker</strong><small>Start a session</small></span>${icon('arrow', 'role-arrow')}</a><a class="role-card secondary" href="/join">${icon('captions')}<span><strong>Audience</strong><small>Join a session</small></span>${icon('arrow', 'role-arrow')}</a></div><p class="hero-footnote">${icon('check')}Works in your phone’s browser. Just open and go.</p></div><div class="room-art" aria-hidden="true"><span class="art-ring"></span><span class="art-spark">✳</span><div class="phone-art"><div class="phone-notch"></div><div class="art-brand">Front Row.</div><p class="art-caption">Good ideas<br>belong to<br>everyone.</p><p class="art-interim">Every single<br>word.</p><div class="art-line"></div></div><div class="art-card">${icon('captions')}<span><strong>One room. Every phone.</strong>A shared moment, made clearer.</span></div><span class="art-dot"></span></div></section><section class="how-section" aria-labelledby="how-heading"><h2 id="how-heading" class="how-heading">A room, brought together.</h2><div class="how-item"><span class="how-number">01</span><div><h2>Start speaking.</h2><p>One phone picks up the speaker’s voice.</p></div></div><div class="how-item"><span class="how-number">02</span><div><h2>Share a scan.</h2><p>The audience scans a QR code to join.</p></div></div><div class="how-item"><span class="how-number">03</span><div><h2>Follow every word.</h2><p>Live captions, right in everyone’s hand.</p></div></div></section>`, 'home-main', true);
+  document.title = 'Front Row — Live captions for everyone';
+  app.innerHTML = shell(`<section class="hero"><div class="eyebrow">Live captions, together</div><h1>Every word.<br>For everyone.</h1><p class="hero-description">One speaker. Captions on every phone.<br>Choose how you’re joining today.</p><div class="choose-role"><a class="role-card" href="/speaker">${icon('mic')}<span><strong>Start a session</strong><small>I’m speaking or hosting</small></span>${icon('arrow', 'role-arrow')}</a><a class="role-card secondary" href="/join">${icon('captions')}<span><strong>Join a session</strong><small>I’m here to read captions</small></span>${icon('arrow', 'role-arrow')}</a></div><p class="hero-footnote">No download. Just your browser.</p></section>`, 'home-main');
 }
 
 async function speakerSetup() {
   document.title = 'Start a session — Front Row';
   const version = viewVersion;
-  app.innerHTML = shell(`${back()}<div class="setup-layout"><section><div class="page-icon">${icon('mic')}</div><h1>Give every word<br>a front row seat.</h1><p class="lead">Start a session, share the code, and speak.<br>We’ll take care of the captions.</p><form id="speaker-form" class="setup-form"><div class="field"><label for="talk-title">Talk title <span>(optional)</span></label><input id="talk-title" name="title" type="text" maxlength="120" placeholder="e.g. A better kind of classroom" autocomplete="off"></div><div class="field"><label for="spoken-language">Spoken language</label><select id="spoken-language" name="language">${LANGUAGES.map(([code, name]) => `<option value="${code}">${name}</option>`).join('')}</select><p class="hint">Choose the language you’ll be speaking.</p></div>${notice('setup-error')}<button id="start-button" class="button block" type="submit" disabled>${icon('mic')}<span>Checking availability…</span></button><p class="disclosure">Your microphone audio is processed by ElevenLabs. Final captions are saved for 24 hours after the session ends. <a href="/privacy">How your data is handled</a></p></form></section><aside class="setup-aside"><h2>A few things before you start.</h2><ul><li>${icon('mic')}<span>Keep your phone near your mouth or the room’s microphone.</span></li><li>${icon('sun')}<span>Keep this page open and your screen awake while you speak.</span></li><li>${icon('qr')}<span>Your audience joins with a QR code or a short room code. No download needed.</span></li></ul></aside></div>`);
+  app.innerHTML = shell(`${back()}<section class="setup-layout"><div class="eyebrow">Speaker · Set up</div><h1>Start a session</h1><p class="lead">Your phone picks up your voice. Your audience reads along on theirs.</p><form id="speaker-form" class="setup-form"><div class="field"><label for="spoken-language">What language will you speak?</label><select id="spoken-language" name="language">${LANGUAGES.map(([code, name]) => `<option value="${code}">${name}</option>`).join('')}</select></div><details class="optional-details"><summary>Add a session title <span>Optional</span></summary><div class="field"><label for="talk-title">Session title</label><input id="talk-title" name="title" type="text" maxlength="120" placeholder="e.g. Community meeting" autocomplete="off"></div></details><p class="setup-expectation">${icon('mic')}<span>Next, allow your microphone. You’ll get a QR code to share with your audience.</span></p>${notice('setup-error')}<button id="start-button" class="button block" type="submit" disabled><span>Checking availability…</span></button><p class="disclosure">Audio is sent to ElevenLabs for transcription. Final captions are kept for 24 hours after the session ends. <a href="/privacy">Privacy details</a></p></form></section>`);
   $('#speaker-form')!.addEventListener('submit', event => { event.preventDefault(); void startSpeaker(); });
   try { config = await getConfig(); configError = ''; }
-  catch (error) { configError = message(error); }
+  catch (error) { config = undefined; configError = message(error); }
   if (version !== viewVersion) return;
   const button = $<HTMLButtonElement>('#start-button');
-  if (button) { button.disabled = false; button.innerHTML = `${icon('mic')}<span>Start session</span>`; }
+  if (button) {
+    button.disabled = !config?.ready;
+    button.innerHTML = '<span>Start session</span>';
+    if (!config?.ready) showNotice('setup-error', 'Sessions aren’t available yet', configError
+      ? 'We couldn’t check the caption service. Reload the page to try again.'
+      : 'The host needs to connect the caption service before you can start.', 'warning');
+  }
 }
 
 async function startSpeaker() {
@@ -119,7 +125,7 @@ function speakerLive() {
   document.title = 'Speaking live — Front Row';
   const room = session.room;
   const languageName = LANGUAGES.find(([code]) => code === room.language)?.[1] ?? room.language;
-  app.innerHTML = shell(`<div class="live-top"><div><div class="eyebrow">Your room is ready</div><h1>${esc(room.title || 'Every word, together.')}</h1><p>${esc(languageName)} captions · Speaker view</p></div>${statusMarkup()}</div>${notice('live-error')}${notice('live-warning')}<div class="speaker-grid"><section class="panel speaker-caption-panel" aria-labelledby="preview-title"><div class="mic-strip">${icon('mic')}<span class="mic-text">Microphone level</span><div id="mic-meter" class="mic-meter" role="meter" aria-label="Microphone level" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><div id="mic-fill" class="mic-fill"></div></div></div><div class="panel-header"><h2 id="preview-title" class="panel-title">What your audience sees</h2><small>Live caption preview</small></div><div id="transcript" class="transcript speaker-transcript" aria-live="off" tabindex="0" aria-label="Caption preview">${emptyCaptions(true)}</div></section><aside class="panel share-panel" aria-labelledby="share-title"><h2 id="share-title">Bring everyone in.</h2><p>Scan with your phone’s camera.</p><img id="room-qr" class="qr-image" alt="QR code to join this caption session" hidden><div class="code-wrap"><span class="code-label">Or enter room code</span><strong class="room-code">${esc(room.code)}</strong></div><div class="share-actions"><button id="expand-qr" class="button secondary" type="button">${icon('expand')}Show full-screen QR</button><button id="copy-link" class="button quiet" type="button">${icon('copy')}Copy join link</button></div><div class="audience-count">${icon('users')}<strong id="audience-count">0</strong><span>in the audience</span></div></aside></div><div class="speaker-bottom"><p id="wake-status" class="wake-status">${icon('sun')}<span>Keep this page visible and your phone unlocked.</span></p></div><button id="end-button" class="button danger speaker-end" type="button">End session</button><dialog id="end-dialog" aria-labelledby="end-dialog-title" aria-describedby="end-dialog-description"><h2 id="end-dialog-title">End this session?</h2><p id="end-dialog-description">Captions will stop for everyone, and the room code will no longer work.</p><div class="dialog-actions"><button id="cancel-end" class="button secondary" type="button" autofocus>Keep speaking</button><button id="confirm-end" class="button danger solid" type="button">End session</button></div></dialog><dialog id="qr-dialog" class="qr-full" aria-labelledby="qr-dialog-title"><button id="close-qr" class="close-button" type="button" aria-label="Close full-screen QR">${icon('close')}</button><div class="qr-full-inner">${wordmark()}<h2 id="qr-dialog-title">Every word. On your phone.</h2><p>Open your camera and scan to join the captions.</p><img id="fullscreen-qr" class="qr-image" alt="QR code to join this caption session"><span class="code-label">Or enter room code</span><strong class="room-code">${esc(room.code)}</strong><p id="qr-address" class="qr-url"></p></div></dialog>`);
+  app.innerHTML = shell(`<div class="live-top"><div><div class="eyebrow">Speaker · Live session</div><h1>${esc(room.title || 'Live captions')}</h1><p>${esc(languageName)} captions · Speaker view</p></div>${statusMarkup()}</div>${notice('live-error')}${notice('live-warning')}<div class="speaker-grid"><section class="panel speaker-caption-panel" aria-labelledby="preview-title"><div class="mic-strip">${icon('mic')}<span class="mic-text">Microphone level</span><div id="mic-meter" class="mic-meter" role="meter" aria-label="Microphone level" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><div id="mic-fill" class="mic-fill"></div></div></div><div class="panel-header"><h2 id="preview-title" class="panel-title">Caption preview</h2></div><div id="transcript" class="transcript speaker-transcript" aria-live="off" tabindex="0" aria-label="Caption preview">${emptyCaptions(true)}</div></section><aside class="panel share-panel" aria-labelledby="share-title"><h2 id="share-title">Invite your audience</h2><p>Ask them to scan this QR code.</p><img id="room-qr" class="qr-image" alt="QR code to join this caption session" hidden><div class="code-wrap"><span class="code-label">Or enter room code</span><strong class="room-code">${esc(room.code)}</strong></div><div class="share-actions"><button id="expand-qr" class="button secondary" type="button">${icon('expand')}Enlarge QR code</button><button id="copy-link" class="button quiet" type="button">${icon('copy')}Copy join link</button></div><div class="audience-count">${icon('users')}<strong id="audience-count">0</strong><span>in the audience</span></div></aside></div><div class="speaker-bottom"><p id="wake-status" class="wake-status">${icon('sun')}<span>Keep this page visible and your phone unlocked.</span></p></div><button id="end-button" class="button danger speaker-end" type="button">End session</button><dialog id="end-dialog" aria-labelledby="end-dialog-title" aria-describedby="end-dialog-description"><h2 id="end-dialog-title">End this session?</h2><p id="end-dialog-description">Captions will stop for everyone, and the room code will no longer work.</p><div class="dialog-actions"><button id="cancel-end" class="button secondary" type="button" autofocus>Keep speaking</button><button id="confirm-end" class="button danger solid" type="button">End session</button></div></dialog><dialog id="qr-dialog" class="qr-full" aria-labelledby="qr-dialog-title"><button id="close-qr" class="close-button" type="button" aria-label="Close full-screen QR">${icon('close')}</button><div class="qr-full-inner">${wordmark()}<h2 id="qr-dialog-title">Scan to read captions</h2><p>Open your camera and scan to join the captions.</p><img id="fullscreen-qr" class="qr-image" alt="QR code to join this caption session"><span class="code-label">Or enter room code</span><strong class="room-code">${esc(room.code)}</strong><p id="qr-address" class="qr-url"></p></div></dialog>`);
   $('#end-button')!.addEventListener('click', () => openEndDialog());
   $('#cancel-end')!.addEventListener('click', () => { $<HTMLDialogElement>('#end-dialog')!.close(); endDestination = undefined; });
   $('#confirm-end')!.addEventListener('click', () => void finishSession());
@@ -129,7 +135,7 @@ function speakerLive() {
   $('#copy-link')!.addEventListener('click', () => void copyJoinLink());
   const joinUrl = `${location.origin}/join/${room.code}`;
   $('#qr-address')!.textContent = `${location.host}/join`;
-  void QRCode.toDataURL(joinUrl, { width: 720, margin: 2, color: { dark: '#005A87', light: '#FFFFFF' }, errorCorrectionLevel: 'M' }).then(url => {
+  void QRCode.toDataURL(joinUrl, { width: 720, margin: 2, color: { dark: '#215B4C', light: '#FFFFFF' }, errorCorrectionLevel: 'M' }).then(url => {
     qrUrl = url;
     for (const id of ['room-qr', 'fullscreen-qr']) { const img = $<HTMLImageElement>(`#${id}`); if (img) { img.src = url; img.hidden = false; } }
   }).catch(() => showNotice('live-warning', 'The QR code couldn’t load', 'Your audience can still join by entering the room code.', 'warning'));
@@ -244,16 +250,31 @@ function onRoomEnded() {
   void audio?.stop().catch(() => {});
   void wakeLock?.release().catch(() => {});
   publisher?.close();
-  showNotice('live-warning', 'Session ended', 'Thanks for being here. This room code is now closed.', '');
-  const endButton = $<HTMLButtonElement>('#end-button');
-  if (endButton) { endButton.textContent = 'Back to home'; endButton.className = 'button secondary speaker-end'; endButton.replaceWith(endButton.cloneNode(true)); $('#end-button')!.addEventListener('click', () => void navigate('/')); }
-  for (const id of ['expand-qr', 'copy-link']) { const button = $<HTMLButtonElement>(`#${id}`); if (button) button.disabled = true; }
-  $<HTMLDialogElement>('#qr-dialog')?.close();
-  const qr = $<HTMLImageElement>('#room-qr');
-  if (qr) { qr.hidden = true; }
+  void subscription?.close().catch(() => {});
+  showCompletion(true);
+  announceCaptions = false;
   announce('The session has ended.');
   renderCaptions();
 }
+function showCompletion(roomClosed: boolean) {
+  const transcript = $('#transcript');
+  const main = $('#main');
+  if (!main) return;
+  document.title = 'Session complete — Front Row';
+  main.className = 'page completion-page';
+  main.innerHTML = `<section class="completion"><div class="completion-mark">${icon('check')}</div><h1>${roomClosed ? 'Session complete' : 'You’re all done'}</h1><p class="lead">${roomClosed ? 'Live captions have stopped. This room is now closed.' : 'You’ve left the captions. The speaker’s session can continue.'}</p><a class="button block" href="/">Finish</a></section>`;
+  if (transcript && captions.some(caption => caption.text.trim())) {
+    const review = document.createElement('details');
+    review.className = 'transcript-review';
+    const summary = document.createElement('summary');
+    summary.textContent = 'Review captions from this session';
+    review.append(summary, transcript);
+    main.append(review);
+  }
+  main.focus({ preventScroll: true });
+  window.scrollTo(0, 0);
+}
+
 async function copyJoinLink() {
   if (!session) return;
   const button = $<HTMLButtonElement>('#copy-link');
@@ -263,7 +284,7 @@ async function copyJoinLink() {
 
 function joinPage(initialCode = '') {
   document.title = 'Join a session — Front Row';
-  app.innerHTML = shell(`${back()}<section class="join-page"><div class="page-icon">${icon('captions')}</div><h1>You’ve got a seat.</h1><p class="lead">Enter the room code from your speaker to follow the live captions.</p><form id="join-form" class="setup-form"><div class="field"><label for="room-code">Room code</label><input id="room-code" class="room-code-input" name="code" type="text" value="${esc(initialCode)}" placeholder="ABC234" maxlength="6" autocapitalize="characters" spellcheck="false" autocomplete="off" aria-describedby="code-hint" required><p id="code-hint" class="hint">Six letters and numbers. You’ll find it beside the QR code.</p></div>${notice('join-error')}<button id="join-button" class="button block" type="submit">Join session${icon('arrow')}</button></form><p class="join-note">${icon('qr')}<span>Have a QR code? Scan it with your phone’s camera to jump straight to the captions.</span></p></section>`);
+  app.innerHTML = shell(`${back()}<section class="join-page"><div class="eyebrow">Audience · Join</div><h1>Join a session</h1><p class="lead">Enter the code shared by your speaker.</p><form id="join-form" class="setup-form"><div class="field"><label for="room-code">Room code</label><input id="room-code" class="room-code-input" name="code" type="text" value="${esc(initialCode)}" placeholder="ABC234" maxlength="6" autocapitalize="characters" spellcheck="false" autocomplete="off" aria-describedby="code-hint" required><p id="code-hint" class="hint">6 characters, shown beside the speaker’s QR code.</p></div>${notice('join-error')}<button id="join-button" class="button block" type="submit">Read captions${icon('arrow')}</button></form><p class="join-note">${icon('qr')}<span>Have a QR code? Scan it with your camera to join directly.</span></p></section>`);
   $('#join-form')!.addEventListener('submit', event => {
     event.preventDefault();
     const code = $<HTMLInputElement>('#room-code')!.value.trim().toUpperCase();
@@ -299,11 +320,12 @@ async function audiencePage(code: string) {
 }
 function renderAudience() {
   if (!session) return;
-  app.innerHTML = shell(`<div class="live-top"><div><div class="eyebrow">Your front row seat</div><h1>${esc(session.room.title || 'Follow every word.')}</h1><p>Room ${esc(session.room.code)}</p></div>${statusMarkup()}</div>${notice('live-error')}${notice('live-warning')}<div class="audience-toolbar"><div class="size-control"><span id="size-label">Text size</span><div class="size-buttons" role="group" aria-labelledby="size-label"><button id="text-smaller" type="button" aria-label="Smaller caption text">A−</button><button id="text-larger" type="button" aria-label="Larger caption text">A+</button></div><span id="size-value" class="sr-only" role="status">${sizes[sizeIndex]} pixels</span></div><label class="announce-label"><input id="announce-captions" type="checkbox" ${announceCaptions ? 'checked' : ''}>Screen reader announcements</label><button id="catch-up" class="button quiet" type="button">Catch me up</button></div><div id="summary" class="summary-card" hidden></div><div id="transcript" class="transcript audience-transcript" aria-live="off" aria-label="Live captions">${emptyCaptions(false)}</div><p class="audience-session-note">${icon('captions')}Draft captions are italic until the words are confirmed.</p>`, 'page audience-page');
+  app.innerHTML = shell(`<div class="live-top"><div><div class="eyebrow">Audience · Live session</div><h1>${esc(session.room.title || 'Live captions')}</h1><p>Room ${esc(session.room.code)}</p></div>${statusMarkup()}</div>${notice('live-error')}${notice('live-warning')}<div class="audience-toolbar"><div class="size-control"><span id="size-label">Text size</span><div class="size-buttons" role="group" aria-labelledby="size-label"><button id="text-smaller" type="button" aria-label="Smaller caption text">A−</button><button id="text-larger" type="button" aria-label="Larger caption text">A+</button></div><span id="size-value" class="sr-only" role="status">${sizes[sizeIndex]} pixels</span></div><details class="reading-options"><summary>Reading options</summary><label class="announce-label"><input id="announce-captions" type="checkbox" ${announceCaptions ? 'checked' : ''}>Read new captions aloud with my screen reader</label></details><button id="catch-up" class="button quiet" type="button">Catch me up</button></div><div id="summary" class="summary-card" hidden></div><div id="transcript" class="transcript audience-transcript" aria-live="off" aria-label="Live captions">${emptyCaptions(false)}</div><p class="audience-session-note">${icon('captions')}Draft captions are italic until the words are confirmed.</p><button id="leave-session" class="button secondary" type="button">Finish reading</button>`, 'page audience-page');
   $('#text-smaller')!.addEventListener('click', () => changeTextSize(-1));
   $('#text-larger')!.addEventListener('click', () => changeTextSize(1));
   $('#announce-captions')!.addEventListener('change', event => { announceCaptions = (event.target as HTMLInputElement).checked; announce(announceCaptions ? 'Finalized caption announcements are on.' : 'Caption announcements are off.'); });
   $('#catch-up')!.addEventListener('click', () => void requestCatchUp());
+  $('#leave-session')!.addEventListener('click', () => { void subscription?.close().catch(() => {}); announceCaptions = false; showCompletion(false); announce('You’ve finished reading captions.'); });
   changeTextSize(0);
   renderCaptions();
   updateStatus(roomStatus);
@@ -316,7 +338,7 @@ async function requestCatchUp() {
   try {
     const summary = await getSummary(session);
     const card = $('#summary');
-    if (card) { card.innerHTML = summary.bullets.length ? `<strong>Catch me up</strong><ul>${summary.bullets.map(b => `<li>${esc(b.text)}</li>`).join('')}</ul><small>Generated from recent finalized captions.</small>` : '<strong>Catch me up</strong><p>There is not enough finalized caption context yet.</p>'; card.hidden = false; }
+    if (card) { card.innerHTML = summary.bullets.length ? `<strong>Catch me up</strong><ul>${summary.bullets.map(b => `<li>${esc(b.text)}</li>`).join('')}</ul><small>Generated by Gemini from recent captions. Summaries can contain mistakes.</small>` : '<strong>Catch me up</strong><p>There is not enough finalized caption context yet.</p>'; card.hidden = false; }
   } catch (error) { showNotice('live-error', 'Catch-up is unavailable', message(error)); }
   finally { button.disabled = false; button.textContent = 'Catch me up'; }
 }
@@ -330,7 +352,7 @@ function changeTextSize(delta: number) {
 }
 function privacyPage() {
   document.title = 'Your privacy — Front Row';
-  app.innerHTML = shell(`${back()}<article class="privacy-page"><div class="page-icon">${icon('shield')}</div><h1>Good access starts<br>with clear information.</h1><p class="lead">Front Row brings one speaker’s microphone to the whole room as live text. Here’s what happens to that audio and those words.</p><p class="privacy-label">Current version · Live captions</p><section><h2>No account needed.</h2><p>Speakers and audience members can use Front Row without signing up. We don’t add advertising trackers or analytics. We count connected audience tabs, not people’s identities.</p></section><section><h2>Where your audio goes.</h2><p>The speaker’s browser sends microphone audio to ElevenLabs for live transcription. Front Row doesn’t record or save the audio. ElevenLabs processes the audio under its own <a href="https://elevenlabs.io/privacy-policy" target="_blank" rel="noopener noreferrer">privacy policy</a> and the service settings configured by the organizer. We don’t claim that provider data is never retained.</p></section><section><h2>What we save, and for how long.</h2><p>Room details and finalized captions are stored in Supabase so people in the room can receive the same text and recover recent captions. Finalized captions are retained for 24 hours after the session ends, then scheduled for deletion. The speaker’s title and selected language are part of the room details. Draft captions are shared live.</p></section><section><h2>Who can see the captions.</h2><p>Anyone with an active room code can join and read its captions. Share the code with the people you want in the room. Ending a session closes the room and invalidates its code. Captions already received may remain visible on an audience member’s device.</p></section><section><h2>A few practical limits.</h2><p>Front Row works when a speaker or organizer chooses to run it. Automatic captions can make mistakes, especially around names, noise, or overlapping voices. Keep the speaker’s phone close to the sound and its page open.</p></section><section><h2>A shared microphone for a shared moment.</h2><p>On-device caption tools help a person follow audio picked up by their own device. Front Row shares captions from the speaker’s microphone with everyone in the room. Audio leaves the speaker’s device for processing; Front Row is not more private than an on-device tool.</p></section></article>`);
+  app.innerHTML = shell(`${back()}<article class="privacy-page"><div class="eyebrow">Your information</div><h1>Privacy, plainly</h1><p class="lead">No account, advertising trackers, or analytics. Here’s what happens during a session.</p><section><h2>Audio is processed, not recorded by Front Row</h2><p>The speaker’s audio goes to ElevenLabs for transcription. Front Row doesn’t save raw audio. Provider retention depends on the organizer’s settings and <a href="https://elevenlabs.io/privacy-policy" target="_blank" rel="noopener noreferrer">ElevenLabs’ privacy policy</a>.</p></section><section><h2>Captions are saved temporarily</h2><p>Supabase stores room details and final captions during the session and for 24 hours after it ends, then they are scheduled for deletion. Draft captions are shared live. Room details include the title and language. If you request a catch-up summary, recent final captions and their segment IDs are sent to Gemini.</p></section><section><h2>The room code controls who can join</h2><p>Anyone with the active code can read the captions. Share it only with your intended audience. Ending the session closes the code; captions already received can remain visible on a viewer’s device. We count connected audience tabs, not identities.</p></section><section><h2>Automatic captions can make mistakes</h2><p>Names, noise, and overlapping voices can affect accuracy. Keep the speaker’s phone close to the sound source and its page open. Audio leaves the device for processing.</p></section><a class="button secondary privacy-return" href="/">Back to home</a></article>`);
 }
 async function disposeSession() {
   if (heartbeatTimer) { clearInterval(heartbeatTimer); heartbeatTimer = undefined; }
