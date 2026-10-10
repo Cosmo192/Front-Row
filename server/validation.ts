@@ -1,3 +1,4 @@
+import { defaultSessionTitle } from '../shared/session-title.ts';
 import { LANGUAGES, ROOM_CODE_PATTERN, type Caption, type CreateRoomInput, type Room } from '../shared/protocol.ts';
 
 export class ApiFault extends Error {
@@ -24,7 +25,7 @@ export function createRoomInput(value: unknown): CreateRoomInput {
     throw new ApiFault('INVALID_TITLE', 'Keep the talk title to 120 characters.');
   }
   if (!LANGUAGES.some(([code]) => code === input.language)) throw new ApiFault('INVALID_LANGUAGE', 'Choose a spoken language from the list.');
-  return { title, language: input.language as string };
+  return { title: title || defaultSessionTitle(new Date(), 'UTC'), language: input.language as string };
 }
 
 export function titleInput(value: unknown): { title: string } {

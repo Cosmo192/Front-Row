@@ -31,7 +31,7 @@ npm run setup:key
 
 Import `.keys/private-jwk.json` into the Supabase project's JWT signing-key configuration and activate it. Put the same compact JSON object in `SUPABASE_JWT_PRIVATE_KEY` in `.env.local`. Keep `.keys/` and `.env.local` private. The legacy `SUPABASE_JWT_SECRET` can be used instead, but do not configure both signing methods.
 
-Apply both files in `supabase/migrations/` in timestamp order to a dedicated Supabase project. The second migration adds owner-only session titles after a session ends. Enable `pg_cron`, then schedule `select public.front_row_cleanup();` every 15 minutes. The migration deliberately does not alter tables in the hosted `realtime` schema; its policies are the only Realtime changes.
+Apply both files in `supabase/migrations/` in timestamp order to a dedicated Supabase project. The second migration adds owner-only session titles after a session ends. New sessions are saved with a default title using the speaker’s local date (for example, `Session — Oct 10, 2026`); skipping the title or leaving it blank retains that name. API-only callers without a title receive a UTC date fallback. Enable `pg_cron`, then schedule `select public.front_row_cleanup();` every 15 minutes. The migration deliberately does not alter tables in the hosted `realtime` schema; its policies are the only Realtime changes.
 
 Run the app:
 

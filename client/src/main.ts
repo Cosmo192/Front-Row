@@ -1,4 +1,5 @@
 import './styles.css';
+import { defaultSessionTitle } from '../../shared/session-title';
 import QRCode from 'qrcode';
 import { LANGUAGES, ROOM_CODE_PATTERN, type AppConfig, type Caption, type RoomSession, type RoomStatus } from '../../shared/protocol';
 import { prepareAudio, type PreparedAudio } from './audio';
@@ -81,7 +82,7 @@ async function startSpeaker() {
     return;
   }
   if (previewMode) { await navigate(`/preview/live?language=${$<HTMLSelectElement>('#spoken-language')!.value}`); return; }
-  const title = '';
+  const title = defaultSessionTitle();
   const language = $<HTMLSelectElement>('#spoken-language')!.value;
   button.disabled = true;
   button.innerHTML = '<span class="spinner" aria-hidden="true"></span><span>Starting your session…</span>';
@@ -259,22 +260,23 @@ function onRoomEnded() {
 function postSessionTitle() {
   if (previewMode) history.replaceState({}, '', '/preview/title');
   document.title = 'Name your session — Front Row';
-  app.innerHTML = shell(`<section class="setup-layout"><div class="completion-mark">${icon('check')}</div><h1>What was this session called?</h1><p class="lead">Your session has ended. Add a title to identify these captions.</p><form id="title-form" class="setup-form"><div class="field"><label for="session-title">Session title <span class="optional-label">Optional</span></label><input id="session-title" type="text" maxlength="120" placeholder="e.g. Community meeting" value="${esc(session?.room.title ?? '')}" autocomplete="off"></div>${notice('title-error')}<button id="finish-title" class="button block" type="submit">Finish</button><button id="skip-title" class="button quiet block" type="button">Skip for now</button></form></section>`);
+  app.innerHTML = shell(`<section class="setup-layout"><div class="completion-mark">${icon('check')}</div><h1>What was this session called?</h1><p class="lead">Your session has ended. Add a title to identify these captions.</p><form id="title-form" class="setup-form"><div class="field"><label for="session-title">Session title <span class="optional-label">Optional</span></label><input id="session-title" type="text" maxlength="120" placeholder="e.g. Community meeting" value="${esc(session?.room.title || defaultSessionTitle(new Date(session!.room.createdAt)))}" autocomplete="off"></div>${notice('title-error')}<button id="finish-title" class="button block" type="submit">Finish</button><button id="skip-title" class="button quiet block" type="button">Skip for now</button></form></section>`);
   $('#title-form')!.addEventListener('submit', event => { event.preventDefault(); void saveTitle(); });
-  $('#skip-title')!.addEventListener('click', () => { showCompletion(true); renderCaptions(); });
+  $('#skip-title')!.addEventListener('click', () => void saveTitle(true));
   $('#main')?.focus({ preventScroll: true });
 }
-async function saveTitle() {
+async function saveTitle(useDefault = false) {
   if (!session) return;
   const currentSession = session;
   const version = viewVersion;
-  const title = $<HTMLInputElement>('#session-title')!.value.trim();
+  const fallback = currentSession.room.title || defaultSessionTitle(new Date(currentSession.room.createdAt));
+  const title = useDefault ? fallback : $<HTMLInputElement>('#session-title')!.value.trim() || fallback;
   const button = $<HTMLButtonElement>('#finish-title')!;
   button.disabled = true;
   $<HTMLButtonElement>('#skip-title')!.disabled = true;
   button.textContent = 'Finishing…';
   try {
-    if (title) currentSession.room = previewMode ? { ...currentSession.room, title } : (await setSessionTitle(currentSession, title)).room;
+    if (title !== currentSession.room.title) currentSession.room = previewMode ? { ...currentSession.room, title } : (await setSessionTitle(currentSession, title)).room;
     if (version !== viewVersion || session !== currentSession) return;
     showCompletion(true);
     renderCaptions();
@@ -397,7 +399,7 @@ function seedPreview(role: 'speaker' | 'audience', closed = false) {
   const now = new Date().toISOString();
   const selectedLanguage = new URLSearchParams(location.search).get('language');
   const language = LANGUAGES.find(([code]) => code === selectedLanguage)?.[0] ?? 'en';
-  session = { role, accessToken: '', room: { id: 'preview-room', code: 'ABC234', title: '', language, status: closed ? 'ended' : 'listening', createdAt: now, expiresAt: now, version: 1 }, captions: [], realtime: { url: '', publishableKey: '', token: '', expiresAt: 0, topic: '' } };
+  session = { role, accessToken: '', room: { id: 'preview-room', code: 'ABC234', title: defaultSessionTitle(new Date(now)), language, status: closed ? 'ended' : 'listening', createdAt: now, expiresAt: now, version: 1 }, captions: [], realtime: { url: '', publishableKey: '', token: '', expiresAt: 0, topic: '' } };
   captions = [
     { v: 1, type: 'caption', roomId: 'preview-room', segmentId: '1', revision: 1, final: true, text: 'Thank you for being here. Let’s talk about the crossing near the library.', startMs: 0, endMs: 6000 },
     { v: 1, type: 'caption', roomId: 'preview-room', segmentId: '2', revision: 1, final: true, text: 'We want everyone to feel safe walking through our neighborhood.', startMs: 6000, endMs: 12000 },
@@ -414,7 +416,7 @@ function previewPage(path: string) {
   seedPreview(path.startsWith('/audience') ? 'audience' : 'speaker', ['/title', '/done', '/audience-done'].includes(path));
   if (path === '/audience') renderAudience();
   else if (path === '/title') postSessionTitle();
-  else if (path === '/done' || path === '/audience-done') { if (session && path === '/done') session.room.title = 'Neighborhood meeting'; showCompletion(path === '/done'); }
+  else if (path === '/done' || path === '/audience-done') { showCompletion(path === '/done'); }
   else {
     speakerLive();
     $('#audience-count')!.textContent = '3';
