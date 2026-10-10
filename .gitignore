@@ -1,0 +1,12 @@
+node_modules/
+dist/
+.vercel/
+.keys/
+.env
+.env.*
+!.env.example
+*.local
+.DS_Store
+supabase/.temp/
+supabase/.branches/
+test-results/

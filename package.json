@@ -1,0 +1,31 @@
+{
+  "name": "front-row",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": "24.x"
+  },
+  "scripts": {
+    "dev": "tsx watch server/dev.ts",
+    "build": "tsc --noEmit && vite build",
+    "typecheck": "tsc --noEmit",
+    "test": "tsx --test tests/*.test.ts",
+    "preview": "vite preview --host 127.0.0.1",
+    "setup:key": "node scripts/generate-signing-key.mjs"
+  },
+  "dependencies": {
+    "@elevenlabs/client": "1.27.0",
+    "@supabase/supabase-js": "2.117.3",
+    "jose": "6.2.12",
+    "qrcode": "1.5.4"
+  },
+  "devDependencies": {
+    "@electric-sql/pglite": "0.5.8",
+    "@types/node": "24.10.1",
+    "@types/qrcode": "1.5.6",
+    "tsx": "4.23.15",
+    "typescript": "7.0.2",
+    "vite": "8.3.4"
+  }
+}
