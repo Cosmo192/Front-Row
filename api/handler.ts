@@ -1,6 +1,10 @@
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import { handleRequest } from '../server/app.ts';
 
+export function normalizeApiPath(path: string): string {
+  return `/api/${path.replace(/^\/+/, '').replace(/^api\//, '')}`;
+}
+
 // One adapter serves every /api/* route via the Vercel rewrite. No open server socket.
 export default async function handler(request: IncomingMessage & { body?: unknown }, response: ServerResponse) {
   const headers = new Headers();
@@ -15,8 +19,7 @@ export default async function handler(request: IncomingMessage & { body?: unknow
   if (url.pathname === '/api/handler') {
     const original = url.searchParams.get('path');
     if (original) {
-      const normalized = original.startsWith('/') ? original : `/${original}`;
-      url.pathname = `/api/${normalized.replace(/^\/api\//, '')}`;
+      url.pathname = normalizeApiPath(original);
       url.search = '';
     }
   }
