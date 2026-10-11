@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { CaptionPublisher, RequestError } from '../client/src/connection.ts';
+import { CaptionPublisher, RequestError, getConfig } from '../client/src/connection.ts';
 import type { Caption, RoomSession } from '../shared/protocol.ts';
 
 const session = { room: { code: 'ABCDEF' } } as RoomSession;
@@ -68,4 +68,18 @@ test('backlog is bounded and reports failure when too many finals wait', async (
   await assert.rejects(publisher.flush(), /could not be delivered/);
   assert.equal(errors.length, 1);
   release();
+});
+
+
+test('configuration requests preserve same-origin deployment authentication', async () => {
+  const originalFetch = globalThis.fetch;
+  let credentials: RequestCredentials | undefined;
+  globalThis.fetch = async (_input, init) => {
+    credentials = init?.credentials;
+    return Response.json({ ready: true, missing: [], tier: 1 });
+  };
+  try {
+    assert.equal((await getConfig()).ready, true);
+    assert.equal(credentials, 'same-origin');
+  } finally { globalThis.fetch = originalFetch; }
 });

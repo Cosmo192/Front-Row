@@ -12,7 +12,7 @@ async function request<T>(path: string, method = 'GET', body?: unknown, token?: 
   const timeout = setTimeout(() => controller.abort(), 12_000);
   try {
     const response = await fetch(path, {
-      method, credentials: 'omit', cache: 'no-store', signal: controller.signal,
+      method, credentials: 'same-origin', cache: 'no-store', signal: controller.signal,
       headers: { ...(body === undefined ? {} : { 'Content-Type': 'application/json' }), ...(token ? { Authorization: `Bearer ${token}` } : {}) },
       ...(body === undefined ? {} : { body: JSON.stringify(body) }),
     });
