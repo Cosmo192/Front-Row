@@ -83,3 +83,11 @@ With `npm run dev` running, open `/preview` to see the speaking and reading flow
 Normal pages fit within the viewport, with long transcripts scrolling within their caption panel. Short screens and enlarged text retain scrolling so controls remain accessible.
 
 Organizers name the session after recording stops. The date-based name is prefilled; Save and finish saves it and returns home. Audience members return home when the session ends. Preview the title screen at `/preview/title`.
+
+### Current demo limits
+
+The current implementation uses Supabase and stores final captions for 24 hours after a session ends. It does **not** satisfy a no-database, live-only data requirement. Provider retention must also be checked before making a Zero Data claim.
+
+Audience text sizing and screen-reader announcements are implemented. Theme selection, a dedicated high-contrast mode, jump-to-live control, transcript download, speaker Pause, live translation, and sound labels are not implemented. The organizer currently uses the focused QR layout rather than a caption preview. Catch-up summaries require Gemini configuration.
+
+The sample preview validates navigation and layout only. Before an event demo, test the deployed HTTPS app with a real speaker phone and a separate audience phone, including microphone permission, captions, reconnection, room closure, and title saving.

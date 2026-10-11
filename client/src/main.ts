@@ -1,4 +1,5 @@
 import './styles.css';
+import { stopAndEnd } from './session-end';
 import { defaultSessionTitle } from '../../shared/session-title';
 import QRCode from 'qrcode';
 import { LANGUAGES, ROOM_CODE_PATTERN, type AppConfig, type Caption, type RoomSession, type RoomStatus } from '../../shared/protocol';
@@ -103,20 +104,22 @@ async function startSpeaker() {
     if (version !== viewVersion) { await pendingAudio.stop(); await endRoom(pendingSession); return; }
     speakerLive();
     await connectToRoom();
+    if (version !== viewVersion || session !== pendingSession || ended) return;
     publisher = new CaptionPublisher(session, error => showNotice('live-error', 'Captions could not be shared', message(error)));
     await audio.start({ token: token.token, roomId: session.room.id, language, onCaption: caption => { acceptCaption(caption); publisher?.publish(caption); }, onStatus: status => { if (status === 'listening') updateStatus('listening'); else if (status === 'connecting') updateStatus('starting'); } });
-    if (ended || !session) return;
+    if (ended || session !== pendingSession || version !== viewVersion) return;
     const result = await setRoomState(session, 'listening');
+    if (ended || session !== pendingSession || version !== viewVersion) return;
     session.room = result.room;
-    updateStatus('listening');
+    updateStatus(result.room.status);
     startHeartbeat();
     void acquireWakeLock();
     announce('Your session has started. Share the QR code with your audience.');
   } catch (error) {
     await pendingAudio?.stop().catch(() => {});
     if (pendingSession) await endRoom(pendingSession).catch(() => {});
+    if (version !== viewVersion || ended) return;
     await disposeSession();
-    if (version !== viewVersion) return;
     await speakerSetup();
     const text = message(error);
     showNotice('setup-error', /denied|permission|NotAllowed/i.test(text) ? 'Microphone access is needed' : 'Your session couldn’t start', /denied|permission|NotAllowed/i.test(text) ? 'Allow microphone access in your browser’s site settings, then try again. On iPhone, look for Website Settings in Safari’s page menu.' : text);
@@ -127,6 +130,7 @@ function speakerLive() {
   if (!session) return;
   document.title = 'Speaking live — Front Row';
   const room = session.room;
+  const version = viewVersion;
   const languageName = LANGUAGES.find(([code]) => code === room.language)?.[1] ?? room.language;
   app.innerHTML = shell(`<div class="live-top"><div><h1>Session live</h1><p>${esc(room.title)} · ${esc(languageName)}</p></div><div class="session-actions">${statusMarkup()}<button id="end-button" class="button danger" type="button">End session</button></div></div>${notice('live-error')}${notice('live-warning')}<section class="organizer-qr" aria-labelledby="share-title"><h2 id="share-title">Scan to read captions</h2><img id="room-qr" class="qr-image" alt="QR code to join this caption session" hidden><button id="expand-qr" class="button quiet" type="button">${icon('expand')}Show full-screen QR</button><div class="audience-count">${icon('users')}<strong id="audience-count">${audienceCount}</strong><span>connected</span></div><details class="join-alternatives"><summary>Other ways to join</summary><div class="code-wrap"><span class="code-label">Room code</span><strong class="room-code">${esc(room.code)}</strong></div><button id="copy-link" class="button quiet" type="button">${icon('copy')}Copy join link</button></details></section><dialog id="end-dialog" aria-labelledby="end-dialog-title" aria-describedby="end-dialog-description"><h2 id="end-dialog-title">End this session?</h2><p id="end-dialog-description">Captions will stop for everyone, and the room code will no longer work.</p><div class="dialog-actions"><button id="cancel-end" class="button secondary" type="button" autofocus>Keep speaking</button><button id="confirm-end" class="button danger solid" type="button">End session</button></div></dialog><dialog id="qr-dialog" class="qr-full" aria-labelledby="qr-dialog-title"><button id="close-qr" class="close-button" type="button" aria-label="Close full-screen QR">${icon('close')}</button><div class="qr-full-inner">${wordmark()}<h2 id="qr-dialog-title">Scan to read captions</h2><p>Open your camera and scan to join the captions.</p><img id="fullscreen-qr" class="qr-image" alt="QR code to join this caption session"><span class="code-label">Or enter room code</span><strong class="room-code">${esc(room.code)}</strong><p id="qr-address" class="qr-url"></p></div></dialog>`, 'page speaker-page');
   $('#end-button')!.addEventListener('click', () => openEndDialog());
@@ -138,6 +142,7 @@ function speakerLive() {
   const joinUrl = `${location.origin}${route(`/join/${room.code}`)}`;
   $('#qr-address')!.textContent = `${location.host}/join`;
   void QRCode.toDataURL(joinUrl, { width: 720, margin: 2, color: { dark: '#215B4C', light: '#FFFFFF' }, errorCorrectionLevel: 'M' }).then(url => {
+    if (version !== viewVersion || session?.room.id !== room.id || ended) return;
     qrUrl = url;
     for (const id of ['room-qr', 'fullscreen-qr']) { const img = $<HTMLImageElement>(`#${id}`); if (img) { img.src = url; img.hidden = false; } }
   }).catch(() => showNotice('live-warning', 'The QR code couldn’t load', 'Your audience can still join by entering the room code.', 'warning'));
@@ -188,21 +193,34 @@ function renderCaptions() {
 async function connectToRoom() {
   if (!session) return;
   const currentSession = session;
-  subscription = await subscribeRoom(currentSession, {
+  const connected = await subscribeRoom(currentSession, {
     onEvent: event => {
-      if (session?.room.id !== currentSession.room.id) return;
+      if (session !== currentSession || ended) return;
       if (event.type === 'caption') acceptCaption(event);
       if (event.type === 'room.state') { session.room = event.room; updateStatus(event.room.status); if (event.room.status === 'ended') onRoomEnded(); }
       if (event.type === 'room.ended') onRoomEnded();
     },
-    onStatus: status => { connectionStatus = status; updateStatus(roomStatus); if (status === 'connected' && $('#live-error')) $('#live-error')!.hidden = true; },
-    onAudienceCount: count => { audienceCount = count; const element = $('#audience-count'); if (element) element.textContent = String(count); },
-    onError: error => showNotice('live-error', 'The room connection was interrupted', message(error)),
+    onStatus: status => { if (session !== currentSession || ended) return; connectionStatus = status; updateStatus(roomStatus); },
+    onAudienceCount: count => { if (session !== currentSession || ended) return; audienceCount = count; const element = $('#audience-count'); if (element) element.textContent = String(count); },
+    onError: error => { if (session === currentSession && !ended) showNotice('live-error', 'The room connection was interrupted', message(error)); },
   });
+  if (session !== currentSession || ended) { await connected.close(); return; }
+  subscription = connected;
 }
 function startHeartbeat() {
   if (heartbeatTimer) clearInterval(heartbeatTimer);
-  heartbeatTimer = setInterval(() => { if (session && !ended && session.role === 'speaker') void heartbeat(session).then(result => { if (session) session.room = result.room; }).catch(error => showNotice('live-warning', 'The room connection was interrupted', message(error), 'warning')); }, 15_000);
+  heartbeatTimer = setInterval(() => {
+    const currentSession = session;
+    if (!currentSession || ended || currentSession.role !== 'speaker') return;
+    void heartbeat(currentSession).then(result => {
+      if (session !== currentSession || ended || result.room.version < currentSession.room.version) return;
+      currentSession.room = result.room;
+      updateStatus(result.room.status);
+      if (result.room.status === 'ended') onRoomEnded();
+    }).catch(error => {
+      if (session === currentSession && !ended) showNotice('live-warning', 'The room connection was interrupted', message(error), 'warning');
+    });
+  }, 15_000);
 }
 async function acquireWakeLock() {
   if (!session || session.role !== 'speaker' || ended || document.visibilityState !== 'visible' || !('wakeLock' in navigator)) return;
@@ -226,9 +244,11 @@ async function finishSession() {
   const currentSession = session;
   try {
     if (previewMode) { currentSession.room.status = 'ended'; $<HTMLDialogElement>('#end-dialog')?.close(); onRoomEnded(); return; }
-    await audio?.stop();
-    await publisher?.flush();
-    const result = await endRoom(currentSession);
+    const result = await stopAndEnd(
+      async () => { await audio?.stop(); },
+      async () => { await publisher?.flush(); },
+      () => endRoom(currentSession),
+    );
     currentSession.room = result.room;
     if (session === currentSession) { $<HTMLDialogElement>('#end-dialog')?.close(); onRoomEnded(); }
   } catch (error) {
@@ -277,7 +297,7 @@ async function saveSessionTitle() {
 async function copyJoinLink() {
   if (!session) return;
   const button = $<HTMLButtonElement>('#copy-link');
-  try { await navigator.clipboard.writeText(`${location.origin}/join/${session.room.code}`); if (button) button.innerHTML = `${icon('check')}Link copied`; announce('Join link copied.'); }
+  try { await navigator.clipboard.writeText(`${location.origin}${route(`/join/${session.room.code}`)}`); if (button) button.innerHTML = `${icon('check')}Link copied`; announce('Join link copied.'); }
   catch { showNotice('live-warning', 'Share the room code', 'Copying isn’t available in this browser. Your audience can enter the six-character code instead.', 'warning'); }
 }
 
